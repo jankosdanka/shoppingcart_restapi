@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon ./src/app.js",
-    "populateDb": "./seedDb/populateDb.js"
+    "populateDb": "node ./seedDb/populateDb.js"
   },
   "keywords": [],
   "author": "nope",

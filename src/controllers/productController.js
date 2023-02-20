@@ -10,14 +10,14 @@ exports.getProducts = async (req, res) => {
   return res.json(products);
 };
 
-exports.getTicketById = async (req, res) => {
-  const ticketId = req.params.id;
+// exports.getTicketById = async (req, res) => {
+//   const ticketId = req.params.id;
 
-  const ticket = await Ticket.findById(ticketId);
-  if (!ticket) throw new NotFoundError("That ticket does not exist...");
+//   const ticket = await Ticket.findById(ticketId);
+//   if (!ticket) throw new NotFoundError("That ticket does not exist...");
 
-  return res.json(ticket);
-};
+//   return res.json(ticket);
+// };
 
 // exports.createTicket = async (req, res) => {
 //   const title = req.body?.title;

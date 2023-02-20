@@ -10,16 +10,16 @@ exports.getAllCarts = async (req, res, next) => {
 
 exports.getCartById = async (req, res, next) => {
   // Get our project id (put in local variable)
-  const projectId = req.params.projectId;
+  const cartId = req.params.id;
 
-  // Find project with that id
-  const project = await Project.findById(projectId);
+  // Find cart with that id
+  const cart = await Cart.findById(cartId);
 
   // IF(no project) return 404
-  if (!project) throw new NotFoundError("This project does not exist");
+  if (!cart) throw new NotFoundError("That cart does not exist...");
 
-  // respond with project data (200 OK)
-  return res.json(project);
+  // respond with cart data (200 OK)
+  return res.json(cart);
 };
 
 exports.createNewCart = async (req, res, next) => {
@@ -49,32 +49,82 @@ exports.createNewCart = async (req, res, next) => {
     .json(newCart)
 };
 
-exports.updateProjectById = async (req, res, next) => {
-  // Place project id in local variable
-  const projectId = req.params.projectId;
+exports.addToCartById = async (req, res, next) => {
+  const cartId = req.params.cartId;
+  const pId = req.body.pId;
+  let quantityToAdd = req.body.quantity || 1;
+  const cart = await Cart.findById(cartId);
 
-  // Place name and description from req.body in local variables
-  const { name, description } = req.body;
+  if (!cart) throw new NotFoundError("This cart does not exist");
 
-  // If no name && description respond with Bad Request
-  if (!name && !description)
-    throw new BadRequestError(
-      "You must provide a name or a description to update..."
-    );
+  const products = cart.products;
 
-  // Get project
-  const projectToUpdate = await Project.findById(projectId);
+  const existingProductIndex = products.findIndex(
+    (product) => product.product == pId
+  );
 
-  // If (no project) respond with Not Found
-  if (!projectToUpdate) throw new NotFoundError("This project does not exist");
+  if (existingProductIndex > -1) {
+    products[existingProductIndex].quantity += quantityToAdd;
+  } else {
+    products.push({
+      product: pId,
+      quantity: quantityToAdd,
+    });
+  }
 
-  // Update project
-  if (name) projectToUpdate.name = name;
-  if (description) projectToUpdate.description = description;
-  const updatedProject = await projectToUpdate.save();
+  await cart.populate("products.product");
 
-  // Craft response (return updated project)
-  return res.json(updatedProject);
+  let totalPrice = cart.totalPrice || 0;
+  products.forEach((product) => {
+    if (product.product._id == pId) {
+      totalPrice += product.product.productPrice * quantityToAdd;
+    }
+  });
+  cart.totalPrice = totalPrice;
+
+  await cart.save();
+
+  return res.json(cart);
+};
+
+exports.removeFromCartById = async (req, res, next) => {
+  const cartId = req.params.cartId;
+  const pId = req.body.pId;
+  let quantityToRemove = req.body.quantity || 1;
+  const cart = await Cart.findById(cartId);
+  if (!cart) throw new NotFoundError("This cart does not exist");
+
+  let products = cart.products;
+  await cart.populate("products.product");
+
+  const productIndex = products.findIndex(
+    (product) => product.product._id == pId
+  );
+
+  if (productIndex < 0) throw new BadRequestError("Already empty cart!");
+
+  if (products[productIndex].quantity > quantityToRemove) {
+    products[productIndex].quantity -= quantityToRemove;
+
+    let totalPrice = cart.totalPrice || 0;
+
+    products.forEach((product) => {
+      if (product.product._id == pId) {
+        totalPrice -= product.product.productPrice * quantityToRemove;
+      }
+    });
+
+    cart.totalPrice = totalPrice;
+  } else {
+    cart.totalPrice -= products[productIndex].product.productPrice;
+    products.splice(productIndex, 1);
+  }
+
+  //await cart.populate('products.product')
+
+  await cart.save();
+  const cartRes = await cart.populate("products.product");
+  return res.json(cartRes);
 };
 
 exports.deleteCartById = async (req, res, next) => {
@@ -90,8 +140,4 @@ exports.deleteCartById = async (req, res, next) => {
 
   // Craft our response
   return res.sendStatus(204);
-};
-
-exports.updateCartById = (req, res) => {
-  return res.send("hello");
 };
